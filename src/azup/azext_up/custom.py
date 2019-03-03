@@ -40,7 +40,7 @@ def down(cmd):
     container_client.container_groups.delete(resource_group_name, container_name)
 
 
-def up(cmd, launch_browser=None, attach=None, ports=None):
+def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
     import time
     from msrestazure.azure_exceptions import CloudError
     from azure.cli.core.profiles import get_sdk
@@ -52,7 +52,7 @@ def up(cmd, launch_browser=None, attach=None, ports=None):
     aznow_json = os.path.join(cwd, 'aznow.json')
     aznow_json_exists = os.path.exists(aznow_json)
     if next((f for f in items if f.endswith('.csproj') or f.endswith('.vbproj')), None):
-        image = 'neverland123/agent:dotnet-slim'
+        image = 'neverland123/agent:dotnet-slim.2.2.104'
         if not aznow_json_exists:
             with open(aznow_json, 'w') as file_handler:
                 file_handler.write(json.dumps({
@@ -96,7 +96,23 @@ def up(cmd, launch_browser=None, attach=None, ports=None):
         container_group = container_client.container_groups.get(resource_group_name, container_name)
     except CloudError:
         container_group = None
-    if not container_group:
+
+    environment_variables = None
+    if databases:
+        databases = [d.lower() for d in databases]
+        az_up_env_vars = [(k[k.lower().index('az_up_') + len('az_up_'):], k) for k in os.environ if k.lower().startswith('az_up_')]
+        env_vars_to_copy = [env_var for suffix, env_var in az_up_env_vars if suffix.lower() in databases or env_var.lower() in databases]
+        environment_variables = [{'name': k, 'secure_value': os.environ[k]} for k in env_vars_to_copy]
+
+    to_create_container = not container_group
+    if container_group and environment_variables:
+        provisioned_env_vars = [x.name for x in container_group.containers[0].environment_variables]
+        if provisioned_env_vars != env_vars_to_copy:
+            to_create_container = True
+        else:
+            logger.warning('Same data connections are already set, skipping')
+
+    if to_create_container:
         # create RG
         logger.warning('One time configuration...')
         logger.warning('    Creating a resource group "%s"', resource_group_name)
@@ -111,7 +127,7 @@ def up(cmd, launch_browser=None, attach=None, ports=None):
         logger.warning('    Creating needed infrastructure to run you code')
         logger.info('    Provisioned a container instance "%s" with image of "%s"', container_name, image)
         container_group = create_container_instance(cmd, container_client, location, resource_group_name,
-                                                    container_name, image, base_name, ports)
+                                                    container_name, image, base_name, ports, environment_variables)
         logger.warning('Done (%s sec)', int(time.time() - t))
         container = container_group.containers[0]
         if container.instance_view.current_state.state == 'Error':
@@ -169,7 +185,8 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
     #         4. Port
 
 
-def create_container_instance(cmd, client, location, resource_group_name, name, image, dns_name_label, ports):
+def create_container_instance(cmd, client, location, resource_group_name, name, image, dns_name_label, ports,
+                              environment_variables):
     from azure.mgmt.containerinstance.models import (Container, ContainerGroup, ContainerGroupNetworkProtocol,
                                                      ContainerPort, IpAddress, Port, ResourceRequests,
                                                      ResourceRequirements, ContainerGroupIpAddressType)
@@ -186,7 +203,8 @@ def create_container_instance(cmd, client, location, resource_group_name, name, 
                           image=image,
                           resources=container_resource_requirements,
                           ports=[ContainerPort(
-                              port=p, protocol=protocol) for p in ports] if cgroup_ip_address else None)
+                              port=p, protocol=protocol) for p in ports] if cgroup_ip_address else None,
+                          environment_variables=environment_variables)
 
     cgroup = ContainerGroup(location=location,
                             containers=[container],

@@ -3,8 +3,20 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
+from knack.util import CLIError
 from azure.cli.core import AzCommandsLoader
 from azure.cli.core.profiles import ResourceType
+
+
+def _secure_environment_variables_type(value):
+    """Space-separated values in 'key=value' format."""
+    try:
+        env_name, env_secure_value = value.split('=', 1)
+        return {'name': env_name, 'secureValue': env_secure_value}
+    except ValueError:
+        message = ("Incorrectly formatted secure environment settings. "
+                   "Argument values should be in the format a=b c=d")
+        raise CLIError(message)
 
 
 class AZUPCommandsLoader(AzCommandsLoader):
@@ -30,6 +42,8 @@ class AZUPCommandsLoader(AzCommandsLoader):
             c.argument('launch_browser', options_list=['--launch-browser', '-l'], action='store_true', help='launch browser after deployment')
             c.argument('attach', options_list=['--attach', '-a'], action='store_true', help='attach standard output and error streams. Ctrl+C to stop')
             c.argument('ports', type=int, nargs='*', options_list=['--ports', '-p'], help='space separated web site ports. Default to 80')
+            c.argument('databases', nargs='*',
+                       help='Space separated azure database server name. "az up" command expects connection strings are set through env variable named as "AZ_UP_<SERVERNAME>..."')
 
 
 COMMAND_LOADER_CLS = AZUPCommandsLoader
