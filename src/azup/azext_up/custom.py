@@ -3,12 +3,13 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 import os
+import os.path
 import json
 from knack.util import CLIError
 from knack.log import get_logger
 from azure.cli.core.commands import LongRunningOperation
 from azure.cli.core.profiles import ResourceType, get_sdk
-from azure.cli.core.commands.client_factory import get_mgmt_service_client, get_data_service_client
+from azure.cli.core.commands.client_factory import get_mgmt_service_client
 
 logger = get_logger(__name__)
 
@@ -43,7 +44,6 @@ def down(cmd):
 def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
     import time
     from msrestazure.azure_exceptions import CloudError
-    from azure.cli.core.profiles import get_sdk
 
     cwd, base_name, resource_group_name, location = _get_infra_names()
     ports = ports or [80]
@@ -100,8 +100,10 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
     environment_variables = None
     if databases:
         databases = [d.lower() for d in databases]
-        az_up_env_vars = [(k[k.lower().index('az_up_') + len('az_up_'):], k) for k in os.environ if k.lower().startswith('az_up_')]
-        env_vars_to_copy = [env_var for suffix, env_var in az_up_env_vars if suffix.lower() in databases or env_var.lower() in databases]
+        az_up_env_vars = [(k[k.lower().index('az_up_') + len('az_up_'):], k)
+                          for k in os.environ if k.lower().startswith('az_up_')]
+        env_vars_to_copy = [env_var for suffix, env_var in az_up_env_vars
+                            if suffix.lower() in databases or env_var.lower() in databases]
         environment_variables = [{'name': k, 'secure_value': os.environ[k]} for k in env_vars_to_copy]
 
     to_create_container = not container_group
@@ -149,10 +151,43 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
 
 
 def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
+    import platform
     from subprocess import Popen, PIPE
     import shlex
-    sync_tool = os.path.join(os.path.dirname(os.path.realpath(__file__)), r'sync_tool\aznow.exe')
-    cmd = '"{}" deploy --host {} --port 50051'.format(sync_tool, public_ip)
+    import tempfile
+
+    ext_folder = os.path.dirname(os.path.realpath(__file__))
+    sync_tool_folder = os.path.join(ext_folder, 'sync_tool')
+    sync_tool_exe = os.path.join(sync_tool_folder, 'aznow')
+
+    system = platform.system()
+    if system == 'Windows':
+        sync_tool_exe += '.exe'
+
+    if not os.path.isfile(sync_tool_exe):
+        if system == 'Windows':
+            zip_file = 'win_x64.zip'
+        elif system == 'Linux':
+            zip_file = 'linux_x64.zip'
+        elif system == 'Darwin':
+            zip_file = 'osx_x64.zip'
+        else:
+            raise CLIError('No sync tool available to publish your code')
+
+        import stat
+        import zipfile
+        from six.moves.urllib.request import urlretrieve
+        setup_file = os.path.join(tempfile.mkdtemp(), zip_file)
+        urlretrieve('https://azureclitemp.blob.core.windows.net/azup/' + zip_file, setup_file)
+        zip_ref = zipfile.ZipFile(setup_file, 'r')
+        zip_ref.extractall(sync_tool_folder)
+        zip_ref.close()
+        if system in ['Linux', 'Darwin']:
+            st = os.stat(sync_tool_exe)
+            os.chmod(sync_tool_exe, st.st_mode | stat.S_IEXEC)
+
+
+    cmd = '"{}" deploy --host {} --port 50051'.format(sync_tool_exe, public_ip)
 
     process = Popen(shlex.split(cmd), stdout=PIPE)
     result = True
