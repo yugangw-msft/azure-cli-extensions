@@ -166,19 +166,21 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
 
     if not os.path.isfile(sync_tool_exe):
         if system == 'Windows':
-            zip_file = 'win_x64.zip'
+            zip_file = 'win-x64.zip'
         elif system == 'Linux':
-            zip_file = 'linux_x64.zip'
+            zip_file = 'linux-x64.zip'
         elif system == 'Darwin':
-            zip_file = 'osx_x64.zip'
+            zip_file = 'osx-x64.zip'
         else:
             raise CLIError('No sync tool available to publish your code')
 
         import stat
         import zipfile
         from six.moves.urllib.request import urlretrieve
+        zip_file_uri = 'https://azureclitemp.blob.core.windows.net/azup/' + zip_file
         setup_file = os.path.join(tempfile.mkdtemp(), zip_file)
-        urlretrieve('https://azureclitemp.blob.core.windows.net/azup/' + zip_file, setup_file)
+        logger.warning('Downloading sync tool from %s', zip_file_uri)
+        urlretrieve(zip_file_uri, setup_file)
         zip_ref = zipfile.ZipFile(setup_file, 'r')
         zip_ref.extractall(sync_tool_folder)
         zip_ref.close()
