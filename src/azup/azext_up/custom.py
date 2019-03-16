@@ -41,7 +41,7 @@ def down(cmd):
     container_client.container_groups.delete(resource_group_name, container_name)
 
 
-def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
+def up(cmd, launch_browser=None, attach=None, ports=None, databases=None, start_up_cmd=None):
     import time
     from msrestazure.azure_exceptions import CloudError
 
@@ -61,7 +61,7 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
                     "targetDirectory": "/az-app",
                     "runCommands": [
                         {"command": ["dotnet", "restore"]},
-                        {"command": ["dotnet", "run", "--no-launch-profile"]}
+                        {"command": start_up_cmd.split() if start_up_cmd else ["dotnet", "run", "--no-launch-profile"]}
                     ],
                     "cleanupProcesses": ["dotnet"],
                     "useIgnoreRules": ["docker"]
@@ -78,7 +78,7 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None):
                             "command": ["npm", "update"]
                         },
                         {
-                            "command": ["npm", "start"]
+                            "command": start_up_cmd.split() if start_up_cmd else ["npm", "start"]
                         }
                     ],
                     "cleanupProcesses": ["node"],
@@ -179,7 +179,7 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
         from six.moves.urllib.request import urlretrieve
         zip_file_uri = 'https://azureclitemp.blob.core.windows.net/azup/' + zip_file
         setup_file = os.path.join(tempfile.mkdtemp(), zip_file)
-        logger.warning('Downloading sync tool from %s', zip_file_uri)
+        logger.info('Downloading sync tool from %s', zip_file_uri)
         urlretrieve(zip_file_uri, setup_file)
         zip_ref = zipfile.ZipFile(setup_file, 'r')
         zip_ref.extractall(sync_tool_folder)
@@ -187,7 +187,6 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
         if system in ['Linux', 'Darwin']:
             st = os.stat(sync_tool_exe)
             os.chmod(sync_tool_exe, st.st_mode | stat.S_IEXEC)
-
 
     cmd = '"{}" deploy --host {} --port 50051'.format(sync_tool_exe, public_ip)
 
@@ -202,7 +201,7 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
                 result = False
                 break
             print(output)
-            if 'Now listening on:' in output or 'start /az-app' in output:  # netcore or nodejs
+            if 'listening on' in output or 'start /az-app' in output:  # netcore or nodejs
                 if launch_browser:
                     from azure.cli.core.util import open_page_in_browser
                     logger.warning('Site uri: %s. Let us Launch it in browser...', launch_url)

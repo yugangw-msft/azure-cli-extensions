@@ -7,10 +7,10 @@ from knack.help_files import helps
 
 helps['up'] = """
     type: command
-    short-summary: get your web under the current directory to run in cloud
+    short-summary: (PREVIEW)get your web under the current directory to run in cloud
 """
 helps['down'] = """
     type: command
-    short-summary: remove all infrastructures created by the "up" command
+    short-summary: (PREVIEW)remove all infrastructures created by the "up" command
 """
 

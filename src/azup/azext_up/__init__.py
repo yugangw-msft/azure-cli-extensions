@@ -43,7 +43,8 @@ class AZUPCommandsLoader(AzCommandsLoader):
             c.argument('attach', options_list=['--attach', '-a'], action='store_true', help='attach standard output and error streams. Ctrl+C to stop')
             c.argument('ports', type=int, nargs='*', options_list=['--ports', '-p'], help='space separated web site ports. Default to 80')
             c.argument('databases', nargs='*',
-                       help='Space separated azure database server name. "az up" command expects connection strings are set through env variable named as "AZ_UP_<SERVERNAME>..."')
+                       help='Space separated azure database server name. "az up" securely deploys connection strings set through env variables named as "AZ_UP_<SERVERNAME>..."')
+            c.argument('start_up_cmd', help='if specified, az up will use it to start the web after code is deployed')
 
 
 COMMAND_LOADER_CLS = AZUPCommandsLoader
