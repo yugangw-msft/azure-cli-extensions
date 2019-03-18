@@ -66,7 +66,8 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None, start_
                     "cleanupProcesses": ["dotnet"],
                     "useIgnoreRules": ["docker"]
                 }))
-    elif next((f for f in items if f.endswith('package.json') or f.endswith('node_modules'))):
+    elif next((f for f in items if f.endswith('package.json') or f.endswith('node_modules')), None):
+        ports.append(3000)
         image = 'neverland123/agent:node-slim'
         if not aznow_json_exists:
             with open(aznow_json, 'w') as file_handler:
@@ -83,6 +84,24 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None, start_
                     ],
                     "cleanupProcesses": ["node"],
                     "useIgnoreRules": ["docker", "nodejs"]
+                }))
+    elif next((f for f in items if f.endswith('requirements.txt') or f.endswith('manage.py')), None):
+        image = 'neverland123/agent:python'
+        if not aznow_json_exists:
+            with open(aznow_json, 'w') as file_handler:
+                file_handler.write(json.dumps({
+                    "targetDirectory": "/az-app",
+                    "runCommands": [
+                        {
+                            "glob": "requirements.txt",
+                            "command": ["pip", "install", "-r", "requirements.txt"]
+                        },
+                        {
+                            "command": start_up_cmd.split() if start_up_cmd else "python manage.py runserver 80".split()
+                        }
+                    ],
+                    "cleanupProcesses": ["python"],
+                    "useIgnoreRules": ["docker", "python"]
                 }))
     else:
         raise CLIError("Can't find right code projects for .NET or NodeJS")
@@ -201,7 +220,9 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser):
                 result = False
                 break
             print(output)
-            if 'listening on' in output or 'start /az-app' in output:  # netcore or nodejs
+            if ('listening on' in output  # node
+                or 'start /az-app' in output # netcore
+                or 'Quit the server with' in output):  # python django
                 if launch_browser:
                     from azure.cli.core.util import open_page_in_browser
                     logger.warning('Site uri: %s. Let us Launch it in browser...', launch_url)
