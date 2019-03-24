@@ -67,7 +67,7 @@ def up(cmd, launch_browser=None, attach=None, ports=None, databases=None, start_
                     "useIgnoreRules": ["docker"]
                 }))
     elif next((f for f in items if f.endswith('package.json') or f.endswith('node_modules')), None):
-        ports.append(3000)
+        ports.insert(0,3000)
         image = 'neverland123/agent:node-slim'
         if not aznow_json_exists:
             with open(aznow_json, 'w') as file_handler:
