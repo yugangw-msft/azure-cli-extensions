@@ -156,18 +156,17 @@ def up(cmd, launch_browser=None, attach=None, ports=None, start_up_cmd=None):
 
     if to_create_container:
         # create RG
-        logger.warning('One time configuration...')
-        logger.warning('    Creating a resource group "%s"', resource_group_name)
-
         resource_client = get_mgmt_service_client(cmd.cli_ctx, ResourceType.MGMT_RESOURCE_RESOURCES)
         t_resource_group = get_sdk(cmd.cli_ctx, ResourceType.MGMT_RESOURCE_RESOURCES,
                                    'models#ResourceGroup')
-        resource_client.resource_groups.create_or_update(resource_group_name,
-                                                         t_resource_group(location=location))
+        if not resource_client.resource_groups.check_existence(resource_group_name):
+            logger.warning('Creating a resource group "%s"', resource_group_name)
+            resource_client.resource_groups.create_or_update(resource_group_name,
+                                                             t_resource_group(location=location))
         # create a container instance
         t = time.time()
-        logger.warning('    Creating needed infrastructure to run your code')
-        logger.info('    Provisioned a container instance "%s" with image of "%s"', container_name, image)
+        logger.warning('Creating infrastructure needed to run your code')
+        logger.info('Provisioned a container instance "%s" with image of "%s"', container_name, image)
         container_group = create_container_instance(cmd, container_client, location, resource_group_name,
                                                     container_name, image, base_name,
                                                     ports_to_open, environment_variables)
@@ -181,12 +180,13 @@ def up(cmd, launch_browser=None, attach=None, ports=None, start_up_cmd=None):
     site_url = 'http://{}:{}'.format(fqdn, ports_to_open[-1])
 
     result = sync_code(cwd, container_group.ip_address.ip,
-                       site_url, attach=attach, launch_browser=launch_browser, is_python_django=is_python_django)
+                       site_url, attach=attach, launch_browser=launch_browser,
+                       sentinel_text='Operations to perform:' if is_python_django else None)
     if not result:
         logger.warning('connection error occurred, retry one more time')
         time.sleep(3)
-        result = sync_code(cwd, container_group.ip_address.ip, site_url, attach=attach,
-                           launch_browser=launch_browser, is_python_django=is_python_django)
+        result = sync_code(cwd, container_group.ip_address.ip, site_url, attach=attach, launch_browser=launch_browser,
+                           sentinel_text='Operations to perform:' if is_python_django else None)
     if not result:
         raise CLIError('Failed to provision the code in cloud. Please refer to command output for details')
 
@@ -217,7 +217,7 @@ def download_sync_tool(system, sync_tool_folder, sync_tool_exe):
         os.chmod(sync_tool_exe, st.st_mode | stat.S_IEXEC)
 
 
-def sync_code(cwd, public_ip, launch_url, attach, launch_browser, is_python_django=False):
+def sync_code(cwd, public_ip, launch_url, attach, launch_browser, sentinel_text=None):
     import datetime
     import platform
     from subprocess import Popen, PIPE
@@ -258,7 +258,7 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser, is_python_djan
     t.start()
 
     result = True
-    output, empty_time, idle_time_limit_in_sec = None, None, 10 if is_python_django else 60
+    output, empty_time, idle_time_limit_in_sec = None, None, 60
     while True:
         try:
             output = q.get_nowait()
@@ -283,6 +283,8 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser, is_python_djan
                 if not attach:
                     process.kill()
                     break
+            if sentinel_text and sentinel_text in output:
+                idle_time_limit_in_sec = 10
         else:
             now = datetime.datetime.now()
             if empty_time is None:
@@ -292,6 +294,8 @@ def sync_code(cwd, public_ip, launch_url, attach, launch_browser, is_python_djan
                     logger.warning('No output for {} seconds, assuming the deployment is done'.format(idle_time_limit_in_sec))
                     if launch_browser:
                         open_page_in_browser(launch_url)
+                    else:
+                        logger.warning('Site uri: %s.', launch_url)
                     if not attach:
                         process.kill()
                     break
