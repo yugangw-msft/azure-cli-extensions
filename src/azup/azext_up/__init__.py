@@ -5,7 +5,6 @@
 
 from knack.util import CLIError
 from azure.cli.core import AzCommandsLoader
-from azure.cli.core.profiles import ResourceType
 
 
 def _secure_environment_variables_type(value):
@@ -37,13 +36,10 @@ class AZUPCommandsLoader(AzCommandsLoader):
 
     def load_arguments(self, _):
         # pylint: disable=line-too-long
-        from knack.arguments import CLIArgumentType
         with self.argument_context('up') as c:
             c.argument('launch_browser', options_list=['--launch-browser', '-l'], action='store_true', help='launch browser after deployment')
             c.argument('attach', options_list=['--attach', '-a'], action='store_true', help='attach standard output and error streams. Ctrl+C to stop')
             c.argument('ports', type=int, nargs='*', options_list=['--ports', '-p'], help='space separated web site ports. Default to 80')
-            c.argument('databases', nargs='*',
-                       help='Space separated azure database server name. "az up" securely deploys connection strings set through env variables named as "AZ_UP_<SERVERNAME>..."')
             c.argument('start_up_cmd', help='if specified, az up will use it to start the web after code is deployed')
 
 
