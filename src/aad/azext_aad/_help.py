@@ -6,6 +6,11 @@
 from knack.help_files import helps
 
 helps['ad user update'] = """
-    type: group
-    short-summary: Update an Azure Active Directory user 
+    type: command
+    short-summary: Update an Azure Active Directory user
+"""
+
+helps['ad list-audit-logs'] = """
+    type: command
+    short-summary: list directory audit logs
 """

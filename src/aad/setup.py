@@ -27,7 +27,7 @@ CLASSIFIERS = [
 DEPENDENCIES = []
 
 setup(
-    name='aem',
+    name='aad',
     version=VERSION,
     description='Azure CLI extensions for Azure Active Directoy',
     long_description='N/A',
