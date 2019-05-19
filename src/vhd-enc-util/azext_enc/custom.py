@@ -177,6 +177,25 @@ def rotate_kek(cmd, storage_account, container, blob_name, key_encryption_key, k
     storage_client.set_blob_metadata(container, blob_name, {'DiskEncryptionSettings': json.dumps(enc_settings)})
 
 
+def show_encryption_status(cmd, resource_group_name, vm_name):
+    client = get_mgmt_service_client(cmd.cli_ctx, ResourceType.MGMT_COMPUTE)
+    vm = client.virtual_machines.get(resource_group_name, vm_name)
+    if not vm.storage_profile.os_disk.managed_disk:
+        return CLIError('Not a virtual machine with host based encyrption')
+    ids = [vm.storage_profile.os_disk.managed_disk.id]
+    ids += [x.managed_disk.id for x in vm.storage_profile.data_disks]
+    status = []
+    for x in ids:
+        parts = parse_resource_id(x)
+        disk = client.disks.get(parts['resource_group'], parts['name'])
+        status.append({
+            'name': disk.name,
+            'encryptionSettings': (getattr(disk, 'encryption_settings', None) or
+                                   getattr(disk, 'encryption_settings_collection', None)),
+        })
+    return status
+
+
 def _normalize_kek(cmd, kv_client, key_encryption_key, key_encryption_keyvault):
     if not is_valid_resource_id(key_encryption_keyvault) or not key_encryption_key:
         raise CLIError('Please supply a full resource id of the keyvault and a keyvault key name or id')
