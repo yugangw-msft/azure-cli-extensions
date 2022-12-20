@@ -16,6 +16,7 @@ def load_command_table(self, _):
         g.custom_command('list', 'list_grafana')
         g.custom_show_command('show', 'show_grafana')
         g.custom_command('update', 'update_grafana')
+        g.custom_command('sync', 'sync_grafana')
 
     with self.command_group('grafana dashboard') as g:
         g.custom_command('create', 'create_dashboard')

@@ -51,6 +51,9 @@ def load_arguments(self, _):
         c.argument("start_tls_policy", get_enum_type(["OpportunisticStartTLS", "MandatoryStartTLS", "NoStartTLS"]), arg_group='SMTP', help="TLS policy")
         c.argument("skip_verify", arg_group='SMTP', arg_type=get_three_state_flag(), help="Skip verifying SSL for SMTP server")
 
+    with self.argument_context("grafana sync") as c:
+        c.argument("sync_data_sources", arg_type=get_three_state_flag(), help="sync up data sources. default: false")
+
     with self.argument_context("grafana dashboard") as c:
         c.argument("uid", options_list=["--dashboard"], help="dashboard uid")
         c.argument("title", help="title of a dashboard")
