@@ -43,6 +43,9 @@ def load_arguments(self, _):
         c.argument("public_network_access", get_enum_type(["Enabled", "Disabled"]), options_list=["-p", "--public-network-access"],
                    help="allow public network access")
 
+    with self.argument_context("grafana sync") as c:
+        c.argument("sync_data_sources", arg_type=get_three_state_flag(), help="sync up data sources. default: false")
+
     with self.argument_context("grafana dashboard") as c:
         c.argument("uid", options_list=["--dashboard"], help="dashboard uid")
         c.argument("title", help="title of a dashboard")
