@@ -27,6 +27,7 @@ def load_arguments(self, _):
         c.argument("folder", help="id, uid, title which can identify a folder. CLI will search in the order of id, uid, and title, till finds a match")
         c.argument("api_key_or_token", options_list=["--api-key", "--token", '-t'],
                    help="api key or service account token, a randomly generated string used to interact with Grafana endpoint; if missing, CLI will use logon user's credentials")
+        c.ignore("subscription")  # a help argument
 
     with self.argument_context("grafana create") as c:
         c.argument("grafana_name", grafana_name_type, options_list=["--name", "-n"], validator=None)
@@ -44,7 +45,9 @@ def load_arguments(self, _):
                    help="allow public network access")
 
     with self.argument_context("grafana sync") as c:
-        c.argument("sync_data_sources", arg_type=get_three_state_flag(), help="sync up data sources. default: false")
+        c.argument("dry_run", arg_type=get_three_state_flag(), help="preview changes w/o committing")
+        c.argument("skip_folders", nargs="+", help="space separated folder list which sync command shall skip")
+        c.argument("data_source_uid_mappings", nargs="+", help="space seperated key vaule pairs that 'sync' command can link to new data sources at destination workspace, e.g. --data-source-uid-mappings datasource-1=datasource-2")
 
     with self.argument_context("grafana dashboard") as c:
         c.argument("uid", options_list=["--dashboard"], help="dashboard uid")
