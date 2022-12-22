@@ -42,6 +42,31 @@ helps['grafana update'] = """
            az grafana update -g MyResourceGroup -n MyGrafana --public-network-access disabled
 """
 
+helps['grafana sync'] = """
+    type: command
+    short-summary: Sync Azure Managed Grafana instance's content to another instance.
+    long-summary: Up to current release, only dashboards are sync'd
+    examples:
+        - name: Sync with a few folder ignored
+          text: |
+            az grafana sync
+                --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
+                --destination /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/destination
+                --skip-folders "Azure Monitor Container Insights" "Azure Monitor"
+        - name: Preview the sync
+          text: |
+            az grafana sync
+                --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
+                --destination /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/destination
+                --dry-run
+        - name: Ensure sync pick up the right data source at destination workspace
+          text: |
+            az grafana sync
+                --source /subscriptions/2462343e-2b86-44e6-a7ce-6ff5e5c3e2e7/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/yugangwwcus
+                --destination /subscriptions/2462343e-2b86-44e6-a7ce-6ff5e5c3e2e7/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/yugangwscus
+                --data-source-uid-mappings ivWAunG4z=mDRyuq5Vk
+"""
+
 helps['grafana data-source'] = """
     type: group
     short-summary: Commands to manage data sources of an instance.

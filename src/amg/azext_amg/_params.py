@@ -45,9 +45,12 @@ def load_arguments(self, _):
                    help="allow public network access")
 
     with self.argument_context("grafana sync") as c:
+        c.argument("source", options_list=["--source", "-s"], help="resource id of the source workspace")
+        c.argument("destination", options_list=["--destination", "-d"], help="resource id of the destination workspace")
         c.argument("dry_run", arg_type=get_three_state_flag(), help="preview changes w/o committing")
         c.argument("skip_folders", nargs="+", help="space separated folder list which sync command shall skip")
-        c.argument("data_source_uid_mappings", nargs="+", help="space seperated key vaule pairs that 'sync' command can link to new data sources at destination workspace, e.g. --data-source-uid-mappings datasource-1=datasource-2")
+        c.argument("data_source_uid_mappings", options_list=["--data-source-uid-mappings", "-m"], nargs="+",
+                   help="space seperated key vaule pairs that 'sync' command can link to new data sources at destination workspace, e.g. --data-source-uid-mappings datasource-1=datasource-2")
 
     with self.argument_context("grafana dashboard") as c:
         c.argument("uid", options_list=["--dashboard"], help="dashboard uid")
