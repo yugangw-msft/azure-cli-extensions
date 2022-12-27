@@ -175,8 +175,8 @@ def update_grafana(cmd, grafana_name, api_key_and_service_account=None, determin
     return client.grafana.begin_create(resource_group_name, grafana_name, instance)
 
 
-def show_grafana(cmd, grafana_name, resource_group_name=None):
-    client = cf_amg(cmd.cli_ctx)
+def show_grafana(cmd, grafana_name, resource_group_name=None, subscription=None):
+    client = cf_amg(cmd.cli_ctx, subscription=subscription)
     return client.grafana.get(resource_group_name, grafana_name)
 
 
@@ -246,34 +246,17 @@ def sync_grafana(cmd, source, destination, skip_folders=None, data_source_uid_ma
             summary["dashboards_skipped"].append(dashboard_path)
             continue
 
-        # figure out whether some data sources are missing
-        for p in source_dashboard["dashboard"].get("panels", []):
-            ds = p.get("datasource")
-            if not ds:
-                continue
-            if isinstance(ds, str):  # plain data source name means a type name, let us make sure it exists
-                if not next((d for d in destination_data_sources if d["typeName"] == ds), None):
-                    data_source_missed.add(ds)
-            else:  # it is a property bag, we will need to fix the uid, which is complex
-                ds_type = ds.get("type")  # if no type, ignore it as an invalid dashboard
-                if not ds_type:
-                    continue
-
-                ds_uid = ds.get("uid")  # if no uid, ignore it as an invalid dashboard
-                if not ds_uid:
-                    continue
-
-                if ds_uid in ds_uid_mappings:  # if mapping is available, let us use it
-                    ds["uid"] = ds_uid_mappings[ds_uid]
-                    continue
-
-                dses = [d for d in destination_data_sources if d["type"] == ds_type]
-                if len(dses) == 0:  # the data source doesn't exist
-                    data_source_missed.add(ds_type)
-                elif len(dses) == 1:  # we can fix the uid
-                    ds["uid"] = dses[0]["uid"]
-                else:  # if there are 1+ data source available, we can't do it for uses, let us using mapping provided
-                    data_source_unmatched.add(ds_type)
+        # Figure out whether we shall correct the data sources. It is possible the Uids are different
+        #   1. Panels
+        if source_dashboard.get("dashboard"):
+            _fix_data_source_uid(source_dashboard["dashboard"].get("panels", []),
+                                 data_source_missed, data_source_unmatched,
+                                 destination_data_sources, ds_uid_mappings)
+        #   2. Annotations can be based on data sources
+        if source_dashboard.get("dashboard") and source_dashboard["dashboard"].get("annotations"):
+            _fix_data_source_uid(source_dashboard["dashboard"]["annotations"].get("list", []),
+                                 data_source_missed, data_source_unmatched,
+                                 destination_data_sources, ds_uid_mappings)
 
         if not dry_run:
             delete_dashboard(cmd, destination_workspace, uid, resource_group_name=destination_resource_group,
@@ -305,6 +288,40 @@ def sync_grafana(cmd, source, destination, skip_folders=None, data_source_uid_ma
         logger.warning(("Data sources used by dashboards have more than one matches at destination: \"%s\""
                         ". Use --data_source-uid-mappings to disambiguate"), ", ".join(data_source_unmatched))
     return summary
+
+
+def _fix_data_source_uid(artifacts, data_source_missed, data_source_unmatched,
+                         destination_data_sources, ds_uid_mappings):
+    for p in artifacts:
+        ds = p.get("datasource")
+        if not ds:
+            continue
+        if isinstance(ds, str):  # plain data source name means a type name, let us make sure it exists
+            if not next((d for d in destination_data_sources if d["typeName"] == ds), None):
+                data_source_missed.add(ds)
+        else:  # it is a property bag, we will need to fix the uid, which is complex
+            ds_type = ds.get("type")  # if no type, ignore it as an invalid dashboard
+            if not ds_type:
+                continue
+
+            ds_uid = ds.get("uid")  # if no uid, ignore it as an invalid dashboard
+            if not ds_uid:
+                continue
+
+            if ds_uid in ["-- Grafana --", "grafana"]:  # reserved Uids
+                continue
+
+            if ds_uid in ds_uid_mappings:  # if mapping is available, let us use it
+                ds["uid"] = ds_uid_mappings[ds_uid]
+                continue
+
+            dses = [d for d in destination_data_sources if d["type"] == ds_type]
+            if len(dses) == 0:  # the data source doesn't exist
+                data_source_missed.add(ds_type)
+            elif len(dses) == 1:  # we can fix the uid
+                ds["uid"] = dses[0]["uid"]
+            else:  # if there are 1+ data source available, we can't do it for uses. Expect to use mapping provided
+                data_source_unmatched.add(ds_type)
 
 
 def show_dashboard(cmd, grafana_name, uid, resource_group_name=None, api_key_or_token=None, subscription=None):
@@ -846,7 +863,7 @@ def _send_request(cmd, resource_group_name, grafana_name, http_method, path, bod
                   api_key_or_token=None, subscription=None):
     endpoint = grafana_endpoints.get(grafana_name)
     if not endpoint:
-        grafana = show_grafana(cmd, grafana_name, resource_group_name)
+        grafana = show_grafana(cmd, grafana_name, resource_group_name, subscription=subscription)
         endpoint = grafana.properties.endpoint
         grafana_endpoints[grafana_name] = endpoint
 

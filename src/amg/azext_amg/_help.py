@@ -47,7 +47,7 @@ helps['grafana sync'] = """
     short-summary: Sync Azure Managed Grafana instance's content to another instance.
     long-summary: Up to current release, only dashboards are sync'd
     examples:
-        - name: Sync with a few folder ignored
+        - name: Sync with a few folders skipped
           text: |
             az grafana sync
                 --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
@@ -59,7 +59,7 @@ helps['grafana sync'] = """
                 --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
                 --destination /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/destination
                 --dry-run
-        - name: Ensure sync pick up the right data source at destination workspace
+        - name: Ensure sync command pick up the right data source at the destination workspace through the argument of "--data-source-uid-mappings"
           text: |
             az grafana sync
                 --source /subscriptions/2462343e-2b86-44e6-a7ce-6ff5e5c3e2e7/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/yugangwwcus
