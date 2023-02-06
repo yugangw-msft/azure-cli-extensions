@@ -33,7 +33,9 @@ CLASSIFIERS = [
 ]
 
 # TODO: Add any additional SDK dependencies here
-DEPENDENCIES = []
+DEPENDENCIES = [
+    'grafana-backup==1.2.4'
+]
 
 with open('README.md', 'r', encoding='utf-8') as f:
     README = f.read()

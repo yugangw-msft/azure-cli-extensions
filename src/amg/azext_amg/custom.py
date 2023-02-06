@@ -225,65 +225,31 @@ def delete_grafana(cmd, grafana_name, resource_group_name=None):
     _delete_role_assignment(cmd.cli_ctx, grafana.identity.principal_id)
 
 
-def sync_grafana(cmd, source, destination, resource_group_name, sync_data_sources=None, api_key_or_token=None):
-    # TODO:
-    # 1. different subscription
-    # 1.5: all become positional keywords
-    # 2. handle api-key
-    # 3. handle dry-run
-    # 4. delete unrelated files at destination
-    if sync_data_sources:
-        source_data_sources = list_data_sources(cmd, source, resource_group_name)
-        for data_source in source_data_sources:
-            uid = data_source['uid']
-
-            response = _send_request(cmd, resource_group_name, destination,
-                                     "get", "/api/datasources/uid/" + uid,
-                                     raise_for_error_status=False, api_key_or_token=api_key_or_token)
-            if response.status_code >= 400:
-                if response.status_code == 404:
-                    pass
-                else:
-                    data_source_name = data_source['name']
-                    raise ArgumentUsageError(f"Failed to verifiy data_source '{data_source_name}' exists at '{destination}'. Error: '{response}'.")
-            else:
-                _send_request(cmd, resource_group_name, destination, "delete", "/api/datasources/uid/" + uid)
-            source_data_source = show_data_source(cmd, source, uid, resource_group_name)
-            create_data_source(cmd, destination, source_data_source)
-
-    destination_folders = list_folders(cmd, destination, resource_group_name)
-    destination_folders = {f['title'].lower(): f['id'] for f in destination_folders}
-
-    source_dashboards = list_dashboards(cmd, source, resource_group_name)
-
-    # cross check we will need
-
-    for dashboard in source_dashboards:
-        uid = dashboard["uid"]
-        source_dashboard = show_dashboard(cmd, source, uid, resource_group_name)
-        if source_dashboard["meta"].get('provisioned', None):
-            continue
-        try:
-            _ = show_dashboard(cmd, destination, uid, resource_group_name)
-            delete_dashboard(cmd, destination, uid, resource_group_name)
-        except requests.exceptions.HTTPError as ex:  # TODO capture specific error
-            if ex.response.status_code == 404:
-                pass
-            else:
-                raise ex from None
-
-        # Cross check the folder exists
-        folder_title = source_dashboard["meta"]['folderTitle']
-        if folder_title.lower() == "general":
-            folder_id = None
-        else:
-            folder_id = destination_folders.get(folder_title.lower(), None)
-            if not folder_id:
-                folder_id = create_folder(cmd, source, folder_title, resource_group_name)['id']
-
-        _create_dashboard(cmd, destination, source_dashboard,
-                          folder_id=folder_id,
-                          resource_group_name=resource_group_name)
+def backup_grafana(cmd, grafana_name, directory=None, resource_group_name=None):
+    import os
+    from pathlib import Path
+    from grafana_backup.save import main as backup
+    from grafana_backup.grafanaSettings import main as conf
+    os.environ["GRAFANA_URL"] = _get_grafana_endpoint(cmd, resource_group_name, grafana_name)
+    os.environ["GRAFANA_TOKEN"] = _get_data_plane_creds(cmd, None)[1]
+    os.environ["BACKUP_DIR"] = directory or os.path.join(Path.cwd(), "_backup")
+    default_config = '{0}/conf/grafanaSettings.json'.format(
+        os.path.dirname(__file__))
+    #settings = {
+    #    "general": {
+    #        "GRAFANA_URL": _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+    #        "GRAFANA_TOKEN": _get_data_plane_creds(cmd, None)[1],
+    #        "debug": True,
+    #        "verify_ssl": True,
+    #        "api_health_check": True,
+    #        "backup_dir": file_path or "_OUTPUT_",
+    #        "backup_file_format": "%Y%m%d%H%M",
+    #        "pretty_print": False
+    #    },
+    #    "grafana": {}
+    #}
+    settings = conf(default_config)
+    backup(args={},  settings=settings)
 
 
 def show_dashboard(cmd, grafana_name, uid, resource_group_name=None, api_key_or_token=None):
@@ -303,7 +269,8 @@ def create_dashboard(cmd, grafana_name, definition, title=None, folder=None, res
     folder_id = None
     if folder:
         folder_id = _find_folder(cmd, resource_group_name, grafana_name, folder)
-    return _create_dashboard(cmd, grafana_name, definition, title, folder_id, resource_group_name, overwrite, api_key_or_token)
+    return _create_dashboard(cmd, grafana_name, definition, title, folder_id, resource_group_name,
+                             overwrite, api_key_or_token)
 
 
 def _create_dashboard(cmd, grafana_name, definition, title=None, folder_id=None, resource_group_name=None,
@@ -374,6 +341,68 @@ def import_dashboard(cmd, grafana_name, definition, folder=None, resource_group_
     response = _send_request(cmd, resource_group_name, grafana_name, "post", "/api/dashboards/import",
                              payload, api_key_or_token=api_key_or_token)
     return json.loads(response.content)
+
+
+def sync_dashboard(cmd, source, destination, resource_group_name, sync_data_sources=None, api_key_or_token=None):
+    # TODO:
+    # 1. different subscription
+    # 1.5: all become positional keywords
+    # 2. handle api-key
+    # 3. handle dry-run
+    # 4. delete unrelated files at destination
+    if sync_data_sources:
+        source_data_sources = list_data_sources(cmd, source, resource_group_name)
+        for data_source in source_data_sources:
+            uid = data_source['uid']
+
+            response = _send_request(cmd, resource_group_name, destination,
+                                     "get", "/api/datasources/uid/" + uid,
+                                     raise_for_error_status=False, api_key_or_token=api_key_or_token)
+            if response.status_code >= 400:
+                if response.status_code == 404:
+                    pass
+                else:
+                    data_source_name = data_source['name']
+                    raise ArgumentUsageError(f"Failed to verifiy data_source '{data_source_name}' "
+                                             "exists at '{destination}'. Error: '{response}'.")
+            else:
+                _send_request(cmd, resource_group_name, destination, "delete", "/api/datasources/uid/" + uid)
+            source_data_source = show_data_source(cmd, source, uid, resource_group_name)
+            create_data_source(cmd, destination, source_data_source)
+
+    destination_folders = list_folders(cmd, destination, resource_group_name)
+    destination_folders = {f['title'].lower(): f['id'] for f in destination_folders}
+
+    source_dashboards = list_dashboards(cmd, source, resource_group_name)
+
+    # cross check we will need
+
+    for dashboard in source_dashboards:
+        uid = dashboard["uid"]
+        source_dashboard = show_dashboard(cmd, source, uid, resource_group_name)
+        if source_dashboard["meta"].get('provisioned', None):
+            continue
+        try:
+            _ = show_dashboard(cmd, destination, uid, resource_group_name)
+            delete_dashboard(cmd, destination, uid, resource_group_name)
+        except requests.exceptions.HTTPError as ex:  # TODO capture specific error
+            if ex.response.status_code == 404:
+                pass
+            else:
+                raise ex from None
+
+        # Cross check the folder exists
+        folder_title = source_dashboard["meta"]['folderTitle']
+        if folder_title.lower() == "general":
+            folder_id = None
+        else:
+            folder_id = destination_folders.get(folder_title.lower(), None)
+            if not folder_id:
+                folder_id = create_folder(cmd, source, folder_title, resource_group_name)['id']
+
+        _create_dashboard(cmd, destination, source_dashboard,
+                          folder_id=folder_id,
+                          resource_group_name=resource_group_name)
 
 
 def _try_load_dashboard_definition(cmd, resource_group_name, grafana_name, definition, api_key_or_token=None):
@@ -816,14 +845,16 @@ def _try_load_file_content(file_content):
     return file_content
 
 
-def _send_request(cmd, resource_group_name, grafana_name, http_method, path, body=None, raise_for_error_status=True,
-                  api_key_or_token=None):
+def _get_grafana_endpoint(cmd, resource_group_name, grafana_name):
     endpoint = grafana_endpoints.get(grafana_name)
     if not endpoint:
         grafana = show_grafana(cmd, grafana_name, resource_group_name)
         endpoint = grafana.properties.endpoint
         grafana_endpoints[grafana_name] = endpoint
+    return endpoint
 
+
+def _get_data_plane_creds(cmd, api_key_or_token=None):
     from azure.cli.core._profile import Profile
     profile = Profile(cli_ctx=cmd.cli_ctx)
     # this might be a cross tenant scenario, so pass subscription to get_raw_token
@@ -836,6 +867,14 @@ def _send_request(cmd, resource_group_name, grafana_name, http_method, path, bod
     else:
         creds, _, _ = profile.get_raw_token(subscription=subscription,
                                             resource=amg_first_party_app)
+    return creds
+
+
+def _send_request(cmd, resource_group_name, grafana_name, http_method, path, body=None, raise_for_error_status=True,
+                  api_key_or_token=None):
+    endpoint = _get_grafana_endpoint(cmd, resource_group_name, grafana_name)
+
+    creds = _get_data_plane_creds(cmd, api_key_or_token)
 
     headers = {
         "content-type": "application/json",
