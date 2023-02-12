@@ -3,14 +3,14 @@ from .dashboardApi import search_dashboard, get_dashboard
 from .commons import to_python2_and_3_compatible_string, print_horizontal_line, save_json
 
 
-def main(grafana_url, backup_dir, timestamp):
+def main(grafana_url, backup_dir, timestamp, http_headers):
     folder_path = '{0}/dashboards/{1}'.format(backup_dir, timestamp)
     log_file = 'dashboards_{0}.txt'.format(timestamp)
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    save_dashboards_above_Ver6_2(folder_path, log_file, grafana_url, http_get_headers=None, verify_ssl=None, client_cert=None, debug=None, pretty_print=None, uid_support=True)
+    save_dashboards_above_Ver6_2(folder_path, log_file, grafana_url, http_get_headers=http_headers, verify_ssl=None, client_cert=None, debug=None, pretty_print=None, uid_support=True)
 
 
 def get_all_dashboards_in_grafana(page, limit, grafana_url, http_get_headers, verify_ssl, client_cert, debug):

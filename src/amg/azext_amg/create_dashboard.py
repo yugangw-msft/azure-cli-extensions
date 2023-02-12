@@ -3,8 +3,8 @@ from .commons import to_python2_and_3_compatible_string
 from .dashboardApi import get_folder_id, create_dashboard
 
 
-def main(grafana_url, file_path):
-    with open(file_path, 'r') as f:
+def main(grafana_url, file_path, http_headers):
+    with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     content = json.loads(data)
@@ -12,7 +12,7 @@ def main(grafana_url, file_path):
 
     payload = {
         'dashboard': content['dashboard'],
-        'folderId': get_folder_id(content, grafana_url, http_post_headers=None, verify_ssl=None, client_cert=None, debug=None),
+        'folderId': get_folder_id(content, grafana_url, http_post_headers=http_headers, verify_ssl=None, client_cert=None, debug=None),
         'overwrite': True
     }
 

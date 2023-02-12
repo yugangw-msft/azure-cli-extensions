@@ -225,17 +225,17 @@ def delete_grafana(cmd, grafana_name, resource_group_name=None):
     _delete_role_assignment(cmd.cli_ctx, grafana.identity.principal_id)
 
 
-def backup_grafana(cmd, grafana_name, directory=None, resource_group_name=None):
+def backup_grafana(cmd, grafana_name, components=None, directory=None, resource_group_name=None):
     import os
     from pathlib import Path
-    from .save import main as backup
-    from .grafanaSettings import main as conf
-    os.environ["GRAFANA_URL"] = _get_grafana_endpoint(cmd, resource_group_name, grafana_name)
-    os.environ["GRAFANA_TOKEN"] = _get_data_plane_creds(cmd, None)[1]
-    os.environ["BACKUP_DIR"] = directory or os.path.join(Path.cwd(), "_backup")
-    default_config = '{0}/conf/grafanaSettings.json'.format(
-        os.path.dirname(__file__))
-    #settings = {
+    from .save import save
+    #  from .grafanaSettings import main as conf
+    #  os.environ["GRAFANA_URL"] = _get_grafana_endpoint(cmd, resource_group_name, grafana_name)
+    #  os.environ["GRAFANA_TOKEN"] = _get_data_plane_creds(cmd, None)[1]
+    #  os.environ["BACKUP_DIR"] = directory or os.path.join(Path.cwd(), "_backup")
+    # default_config = '{0}/conf/grafanaSettings.json'.format(
+    #    os.path.dirname(__file__))
+    # settings = {
     #    "general": {
     #        "GRAFANA_URL": _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
     #        "GRAFANA_TOKEN": _get_data_plane_creds(cmd, None)[1],
@@ -247,9 +247,32 @@ def backup_grafana(cmd, grafana_name, directory=None, resource_group_name=None):
     #        "pretty_print": False
     #    },
     #    "grafana": {}
-    #}
-    settings = conf(default_config)
-    backup(args={},  settings=settings)
+    # }
+    # settings = conf(default_config)
+
+    creds = _get_data_plane_creds(cmd, None)
+    headers = {
+        "content-type": "application/json",
+        "authorization": "Bearer " + creds[1]
+    }
+
+    save(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+         backup_dir=directory or os.path.join(Path.cwd(), "_backup"),
+         components=components,
+         http_headers=headers)
+
+
+def restore_grafana(cmd, grafana_name, archive_file, components=None, resource_group_name=None):
+    creds = _get_data_plane_creds(cmd, None)
+    headers = {
+        "content-type": "application/json",
+        "authorization": "Bearer " + creds[1]
+    }
+    from .restore import restore
+    restore(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+            archive_file=archive_file,
+            components=components,
+            http_headers=headers)
 
 
 def show_dashboard(cmd, grafana_name, uid, resource_group_name=None, api_key_or_token=None):

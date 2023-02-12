@@ -13,7 +13,7 @@ import fnmatch
 import collections
 
 
-def restore(args, grafana_url, arg_archive_file):
+def restore(grafana_url, archive_file, components, http_headers):
     def open_compressed_backup(compressed_backup):
         try:
             tar = tarfile.open(fileobj=compressed_backup, mode='r:gz')
@@ -22,20 +22,19 @@ def restore(args, grafana_url, arg_archive_file):
             print(str(e))
             sys.exit(1)
 
-    (status, json_resp, dashboard_uid_support, datasource_uid_support, paging_support) = api_checks(True, grafana_url)
+    (status, json_resp, dashboard_uid_support, datasource_uid_support, paging_support) = api_checks(True, grafana_url, http_headers)
 
     # Do not continue if API is unavailable or token is not valid
     if not status == 200:
         sys.exit(1)
-
     else:
         try:
-            tarfile.is_tarfile(name=arg_archive_file)
+            tarfile.is_tarfile(name=archive_file)
         except IOError as e:
             print(str(e))
             sys.exit(1)
         try:
-            tar = tarfile.open(name=arg_archive_file, mode='r:gz')
+            tar = tarfile.open(name=archive_file, mode='r:gz')
         except Exception as e:
             print(str(e))
             sys.exit(1)
@@ -52,19 +51,16 @@ def restore(args, grafana_url, arg_archive_file):
     with tempfile.TemporaryDirectory() as tmpdir:
         tar.extractall(tmpdir)
         tar.close()
-        restore_components(grafana_url, restore_functions, tmpdir)
+        restore_components(grafana_url, restore_functions, tmpdir, components)
 
 
-def restore_components(grafana_url, restore_functions, tmpdir):
-    arg_components = args.get('--components', False)
+def restore_components(grafana_url, restore_functions, tmpdir, components):
 
-    if arg_components:
-        arg_components_list = arg_components.replace("-", "_").split(',')
-
+    if components:
         # Restore only the components that provided via an argument
         # but must also exist in extracted archive
         # NOTICE: ext[:-1] cuts the 's' off in order to match the file extension name to be restored...
-        for ext in arg_components_list:
+        for ext in components:
             for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext[:-1]), recursive=True):
                 print('restoring {0}: {1}'.format(ext, file_path))
                 restore_functions[ext[:-1]](grafana_url, file_path)

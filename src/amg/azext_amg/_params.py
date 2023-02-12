@@ -54,6 +54,9 @@ def load_arguments(self, _):
     with self.argument_context("grafana sync") as c:
         c.argument("sync_data_sources", arg_type=get_three_state_flag(), help="sync up data sources. default: false")
 
+    with self.argument_context("grafana backup") as c:
+        c.argument("components", get_enum_type(["dashboard", "folders", "snapshots", "annotations"]), nargs='+', help="grafana artifact types to backup")
+
     with self.argument_context("grafana dashboard") as c:
         c.argument("uid", options_list=["--dashboard"], help="dashboard uid")
         c.argument("title", help="title of a dashboard")

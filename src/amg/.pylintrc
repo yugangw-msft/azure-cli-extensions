@@ -1,2 +1,5 @@
 [MASTER]
 ignore=vendored_sdks
+
+[MESSAGES CONTROL]
+disable=line-too-long,consider-using-f-string,no-else-return

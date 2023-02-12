@@ -282,6 +282,7 @@ def add_user_to_org(org_id, payload, grafana_url, http_post_headers, verify_ssl,
 
 
 def send_grafana_get(url, http_get_headers, verify_ssl, client_cert, debug):
+
     r = requests.get(url, headers=http_get_headers, verify=verify_ssl, cert=client_cert)
     if debug:
         log_response(r)

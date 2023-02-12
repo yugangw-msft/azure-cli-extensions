@@ -5,14 +5,14 @@ from .dashboardApi import search_snapshot, get_snapshot
 from .commons import print_horizontal_line, save_json
 
 
-def main(grafana_url, backup_dir, timestamp):
+def main(grafana_url, backup_dir, timestamp, http_headers):
     folder_path = '{0}/snapshots/{1}'.format(backup_dir, timestamp)
     'snapshots_{0}.txt'.format(timestamp)
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    get_all_snapshots_and_save(folder_path, grafana_url, http_get_headers=None, verify_ssl=None, client_cert=None, debug=None, pretty_print=None)
+    get_all_snapshots_and_save(folder_path, grafana_url, http_get_headers=http_headers, verify_ssl=None, client_cert=None, debug=None, pretty_print=None)
     print_horizontal_line()
 
 

@@ -3,7 +3,7 @@ from .dashboardApi import create_annotation
 
 
 def main(grafana_url, file_path):
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     annotation = json.loads(data)

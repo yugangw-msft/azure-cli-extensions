@@ -4,16 +4,16 @@ from .dashboardApi import search_folders, get_folder, get_folder_permissions
 from .commons import to_python2_and_3_compatible_string, print_horizontal_line, save_json
 
 
-def main(grafana_url, backup_dir, timestamp):
+def main(grafana_url, backup_dir, timestamp, http_headers):
     folder_path = '{0}/folders/{1}'.format(backup_dir, timestamp)
     log_file = 'folders_{0}.txt'.format(timestamp)
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    folders = get_all_folders_in_grafana(grafana_url, http_get_headers=None, verify_ssl=None, client_cert=None, debug=None)
+    folders = get_all_folders_in_grafana(grafana_url, http_get_headers=http_headers, verify_ssl=None, client_cert=None, debug=None)
     print_horizontal_line()
-    get_individual_folder_setting_and_save(folders, folder_path, log_file, grafana_url, http_get_headers=None, verify_ssl=None, client_cert=None, debug=None, pretty_print=None, uid_support=True)
+    get_individual_folder_setting_and_save(folders, folder_path, log_file, grafana_url, http_get_headers=http_headers, verify_ssl=None, client_cert=None, debug=None, pretty_print=None, uid_support=True)
     print_horizontal_line()
 
 
