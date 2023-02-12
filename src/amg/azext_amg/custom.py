@@ -228,8 +228,8 @@ def delete_grafana(cmd, grafana_name, resource_group_name=None):
 def backup_grafana(cmd, grafana_name, directory=None, resource_group_name=None):
     import os
     from pathlib import Path
-    from grafana_backup.save import main as backup
-    from grafana_backup.grafanaSettings import main as conf
+    from .save import main as backup
+    from .grafanaSettings import main as conf
     os.environ["GRAFANA_URL"] = _get_grafana_endpoint(cmd, resource_group_name, grafana_name)
     os.environ["GRAFANA_TOKEN"] = _get_data_plane_creds(cmd, None)[1]
     os.environ["BACKUP_DIR"] = directory or os.path.join(Path.cwd(), "_backup")
