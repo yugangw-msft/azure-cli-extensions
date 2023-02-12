@@ -51,10 +51,10 @@ def restore(grafana_url, archive_file, components, http_headers):
     with tempfile.TemporaryDirectory() as tmpdir:
         tar.extractall(tmpdir)
         tar.close()
-        restore_components(grafana_url, restore_functions, tmpdir, components)
+        restore_components(grafana_url, restore_functions, tmpdir, components, http_headers)
 
 
-def restore_components(grafana_url, restore_functions, tmpdir, components):
+def restore_components(grafana_url, restore_functions, tmpdir, components, http_headers):
 
     if components:
         # Restore only the components that provided via an argument
@@ -63,10 +63,13 @@ def restore_components(grafana_url, restore_functions, tmpdir, components):
         for ext in components:
             for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext[:-1]), recursive=True):
                 print('restoring {0}: {1}'.format(ext, file_path))
-                restore_functions[ext[:-1]](grafana_url, file_path)
+                if "nS2uFOm4z.dashboard" in file_path:
+                    print("haha")
+                restore_functions[ext[:-1]](grafana_url, file_path, http_headers)
+
     else:
         # Restore every component included in extracted archive
         for ext in restore_functions.keys():
             for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext), recursive=True):
                 print('restoring {0}: {1}'.format(ext, file_path))
-                restore_functions[ext](grafana_url, file_path)
+                restore_functions[ext](grafana_url, file_path, http_headers)

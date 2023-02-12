@@ -28,7 +28,7 @@ def load_config(path=None):
     config = None
 
     try:
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding="utf8") as f:
             config = json.load(f)
         f.closed
     except IOError as e:
@@ -44,7 +44,7 @@ def save_json(file_name, data, folder_path, extension, pretty_print):
         file_name = re.sub(pattern, '', file_name)
 
     file_path = folder_path + '/' + file_name + '.' + extension
-    with open(u"{0}".format(file_path), 'w') as f:
+    with open(u"{0}".format(file_path), 'w', encoding="utf8") as f:
         if pretty_print:
             f.write(json.dumps(data, sort_keys=True, indent=4, separators=(',', ': ')))
         else:

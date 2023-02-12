@@ -39,7 +39,7 @@ def save_dashboard_setting(dashboard_name, file_name, dashboard_settings, folder
 def get_individual_dashboard_setting_and_save(dashboards, folder_path, log_file, grafana_url, http_get_headers, verify_ssl, client_cert, debug, pretty_print, uid_support):
     file_path = folder_path + '/' + log_file
     if dashboards:
-        with open(u"{0}".format(file_path), 'w') as f:
+        with open(u"{0}".format(file_path), 'w', encoding="utf8") as f:
             for board in dashboards:
                 if uid_support:
                     board_uri = "uid/{0}".format(board['uid'])

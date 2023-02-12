@@ -28,10 +28,10 @@ def save(grafana_url, backup_dir, components, http_headers):
     if components:
         # Backup only the components that provided via an argument
         for backup_function in components:
-            backup_functions[backup_function](grafana_url, backup_dir, timestamp)
+            backup_functions[backup_function](grafana_url, backup_dir, timestamp, http_headers)
     else:
         # Backup every component
         for backup_function in backup_functions.keys():
-            backup_functions[backup_function](grafana_url, backup_dir, timestamp)
+            backup_functions[backup_function[:-1]](grafana_url, backup_dir, timestamp, http_headers)
 
     archive(backup_dir, timestamp)

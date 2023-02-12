@@ -16,6 +16,6 @@ def main(grafana_url, file_path, http_headers):
         'overwrite': True
     }
 
-    result = create_dashboard(json.dumps(payload), grafana_url, http_post_headers=None, verify_ssl=None, client_cert=None, debug=None)
+    result = create_dashboard(json.dumps(payload), grafana_url, http_post_headers=http_headers, verify_ssl=None, client_cert=None, debug=None)
     dashboard_title = to_python2_and_3_compatible_string(content['dashboard'].get('title', ''))
     print("create dashboard {0} response status: {1}, msg: {2} \n".format(dashboard_title, result[0], result[1]))

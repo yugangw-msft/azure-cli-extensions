@@ -3,7 +3,7 @@ from .dashboardApi import create_folder
 
 
 def main(grafana_url, file_path, http_headers):
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     folder = json.loads(data)
