@@ -1,0 +1,25 @@
+from glob import glob
+import os, tarfile, shutil
+
+
+def main(backup_dir, timestamp, dele):
+    archive_file = '{0}/{1}.tar.gz'.format(backup_dir, timestamp)
+    backup_files = list()
+
+    for folder_name in ['folders', 'datasources', 'dashboards', 'alert_channels', 'organizations', 'users', 'snapshots', 'versions', 'annotations']:
+        backup_path = '{0}/{1}/{2}'.format(backup_dir, folder_name, timestamp)
+
+        for file_path in glob(backup_path):
+            print('backup {0} at: {1}'.format(folder_name, file_path))
+            backup_files.append(file_path)
+
+    if os.path.exists(archive_file):
+        os.remove(archive_file)
+
+    with tarfile.open(archive_file, "w:gz") as tar:
+        for file_path in backup_files:
+            tar.add(file_path)
+            if not os.environ.get("AMG_DEBUG", False):
+                shutil.rmtree(os.path.abspath(os.path.join(file_path, os.pardir)))
+    tar.close()
+    print('\ncreated archive at: {0}'.format(archive_file))

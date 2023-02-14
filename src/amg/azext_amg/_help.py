@@ -42,7 +42,7 @@ helps['grafana update'] = """
            az grafana update -g MyResourceGroup -n MyGrafana --public-network-access disabled
 """
 
-helps['grafana sync'] = """
+helps['grafana dashboard sync'] = """
     type: command
     short-summary: Sync Azure Managed Grafana instance's content to another instance.
     long-summary: Up to current release, only dashboards are sync'd

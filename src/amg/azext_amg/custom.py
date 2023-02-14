@@ -194,7 +194,36 @@ def delete_grafana(cmd, grafana_name, resource_group_name=None):
     _delete_role_assignment(cmd.cli_ctx, grafana.identity.principal_id)
 
 
-def sync_grafana(cmd, source, destination, skip_folders=None, data_source_uid_mappings=None, dry_run=None):
+def backup_grafana(cmd, grafana_name, components=None, directory=None, resource_group_name=None):
+    import os
+    from pathlib import Path
+    from .save import save
+    creds = _get_data_plane_creds(cmd, None)
+    headers = {
+        "content-type": "application/json",
+        "authorization": "Bearer " + creds[1]
+    }
+
+    save(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+         backup_dir=directory or os.path.join(Path.cwd(), "_backup"),
+         components=components,
+         http_headers=headers)
+
+
+def restore_grafana(cmd, grafana_name, archive_file, components=None, resource_group_name=None):
+    creds = _get_data_plane_creds(cmd, None)
+    headers = {
+        "content-type": "application/json",
+        "authorization": "Bearer " + creds[1]
+    }
+    from .restore import restore
+    restore(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+            archive_file=archive_file,
+            components=components,
+            http_headers=headers)
+
+
+def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_mappings=None, dry_run=None):
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     if not is_valid_resource_id(source):
         raise ArgumentUsageError(f"'{source}' isn't a valid resource id, please refer to example commands in help")
