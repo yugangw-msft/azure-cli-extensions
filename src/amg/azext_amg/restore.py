@@ -63,8 +63,6 @@ def restore_components(grafana_url, restore_functions, tmpdir, components, http_
         for ext in components:
             for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext[:-1]), recursive=True):
                 print('restoring {0}: {1}'.format(ext, file_path))
-                if "nS2uFOm4z.dashboard" in file_path:
-                    print("haha")
                 restore_functions[ext[:-1]](grafana_url, file_path, http_headers)
 
     else:

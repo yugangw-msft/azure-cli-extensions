@@ -19,6 +19,7 @@ def main(backup_dir, timestamp):
     with tarfile.open(archive_file, "w:gz") as tar:
         for file_path in backup_files:
             tar.add(file_path)
-            shutil.rmtree(os.path.abspath(os.path.join(file_path, os.pardir)))
+            # TODO: Uncomment
+            # shutil.rmtree(os.path.abspath(os.path.join(file_path, os.pardir)))
     tar.close()
     print('\ncreated archive at: {0}'.format(archive_file))
