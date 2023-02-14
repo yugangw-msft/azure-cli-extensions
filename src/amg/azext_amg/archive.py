@@ -2,7 +2,7 @@ from glob import glob
 import os, tarfile, shutil
 
 
-def main(backup_dir, timestamp):
+def main(backup_dir, timestamp, dele):
     archive_file = '{0}/{1}.tar.gz'.format(backup_dir, timestamp)
     backup_files = list()
 
@@ -19,7 +19,7 @@ def main(backup_dir, timestamp):
     with tarfile.open(archive_file, "w:gz") as tar:
         for file_path in backup_files:
             tar.add(file_path)
-            # TODO: Uncomment
-            # shutil.rmtree(os.path.abspath(os.path.join(file_path, os.pardir)))
+            if not os.environ.get("AMG_DEBUG", False):
+                shutil.rmtree(os.path.abspath(os.path.join(file_path, os.pardir)))
     tar.close()
     print('\ncreated archive at: {0}'.format(archive_file))
