@@ -2,7 +2,7 @@ from glob import glob
 import os, tarfile, shutil
 
 
-def main(backup_dir, timestamp, dele):
+def main(backup_dir, timestamp):
     archive_file = '{0}/{1}.tar.gz'.format(backup_dir, timestamp)
     backup_files = list()
 

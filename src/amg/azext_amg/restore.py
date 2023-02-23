@@ -3,6 +3,7 @@ from .create_folder import main as create_folder
 from .create_dashboard import main as create_dashboard
 from .create_snapshot import main as create_snapshot
 from .create_annotation import main as create_annotation
+from .create_datasource import main as create_datasource
 from glob import glob
 import sys
 import tarfile
@@ -47,6 +48,7 @@ def restore(grafana_url, archive_file, components, http_headers):
     restore_functions['dashboard'] = create_dashboard
     restore_functions['snapshot'] = create_snapshot
     restore_functions['annotation'] = create_annotation
+    restore_functions['datasource'] = create_datasource
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tar.extractall(tmpdir)

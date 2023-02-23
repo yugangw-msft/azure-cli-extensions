@@ -198,26 +198,26 @@ def backup_grafana(cmd, grafana_name, components=None, directory=None, resource_
     import os
     from pathlib import Path
     from .save import save
-    creds = _get_data_plane_creds(cmd, None)
+    creds = _get_data_plane_creds(cmd, api_key_or_token=None, subscription=None)
     headers = {
         "content-type": "application/json",
         "authorization": "Bearer " + creds[1]
     }
 
-    save(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+    save(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name, subscription=None),
          backup_dir=directory or os.path.join(Path.cwd(), "_backup"),
          components=components,
          http_headers=headers)
 
 
 def restore_grafana(cmd, grafana_name, archive_file, components=None, resource_group_name=None):
-    creds = _get_data_plane_creds(cmd, None)
+    creds = _get_data_plane_creds(cmd, api_key_or_token=None, subscription=None)
     headers = {
         "content-type": "application/json",
         "authorization": "Bearer " + creds[1]
     }
     from .restore import restore
-    restore(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name),
+    restore(grafana_url= _get_grafana_endpoint(cmd, resource_group_name, grafana_name, subscription=None),
             archive_file=archive_file,
             components=components,
             http_headers=headers)
@@ -344,7 +344,7 @@ def _fix_data_source_uid(artifacts, data_source_missed, data_source_unmatched,
                 ds["uid"] = ds_uid_mappings[ds_uid]
                 continue
 
-            dses = [d for d in destination_data_sources if d["type"] == ds_type]
+            dses = [d for d in destination_data_sources if d["type"] == ds_type and d["name"] == ds.get("name")]
             if len(dses) == 0:  # the data source doesn't exist
                 data_source_missed.add(ds_type)
             elif len(dses) == 1:  # we can fix the uid
@@ -888,14 +888,7 @@ def _try_load_file_content(file_content):
     return file_content
 
 
-def _send_request(cmd, resource_group_name, grafana_name, http_method, path, body=None, raise_for_error_status=True,
-                  api_key_or_token=None, subscription=None):
-    endpoint = grafana_endpoints.get(grafana_name)
-    if not endpoint:
-        grafana = show_grafana(cmd, grafana_name, resource_group_name, subscription=subscription)
-        endpoint = grafana.properties.endpoint
-        grafana_endpoints[grafana_name] = endpoint
-
+def _get_data_plane_creds(cmd, api_key_or_token, subscription):
     from azure.cli.core._profile import Profile
     profile = Profile(cli_ctx=cmd.cli_ctx)
     # this might be a cross tenant scenario, so pass subscription to get_raw_token
@@ -908,6 +901,23 @@ def _send_request(cmd, resource_group_name, grafana_name, http_method, path, bod
     else:
         creds, _, _ = profile.get_raw_token(subscription=subscription,
                                             resource=amg_first_party_app)
+    return creds
+
+
+def _get_grafana_endpoint(cmd, resource_group_name, grafana_name, subscription):
+    endpoint = grafana_endpoints.get(grafana_name)
+    if not endpoint:
+        grafana = show_grafana(cmd, grafana_name, resource_group_name, subscription=subscription)
+        endpoint = grafana.properties.endpoint
+        grafana_endpoints[grafana_name] = endpoint
+    return endpoint
+
+
+def _send_request(cmd, resource_group_name, grafana_name, http_method, path, body=None, raise_for_error_status=True,
+                  api_key_or_token=None, subscription=None):
+    endpoint = _get_grafana_endpoint(cmd, resource_group_name, grafana_name, subscription)
+
+    creds = _get_data_plane_creds(cmd, api_key_or_token, subscription)
 
     headers = {
         "content-type": "application/json",
