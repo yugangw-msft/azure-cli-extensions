@@ -49,7 +49,7 @@ helps['grafana dashboard sync'] = """
     examples:
         - name: Sync with a few folders skipped
           text: |
-            az grafana sync
+            az grafana dashboard sync
                 --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
                 --destination /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/destination
                 --skip-folders "Azure Monitor Container Insights" "Azure Monitor"
@@ -59,12 +59,6 @@ helps['grafana dashboard sync'] = """
                 --source /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/source
                 --destination /subscriptions/00000000-1111-2222-3333-444444444444/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/destination
                 --dry-run
-        - name: Ensure sync command pick up the right data source at the destination workspace through the argument of "--data-source-uid-mappings"
-          text: |
-            az grafana sync
-                --source /subscriptions/2462343e-2b86-44e6-a7ce-6ff5e5c3e2e7/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/yugangwwcus
-                --destination /subscriptions/2462343e-2b86-44e6-a7ce-6ff5e5c3e2e7/resourceGroups/workspaces/providers/Microsoft.Dashboard/grafana/yugangwscus
-                --data-source-uid-mappings ivWAunG4z=mDRyuq5Vk
 """
 
 helps['grafana data-source'] = """

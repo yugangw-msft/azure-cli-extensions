@@ -59,17 +59,13 @@ def restore(grafana_url, archive_file, components, http_headers):
 def restore_components(grafana_url, restore_functions, tmpdir, components, http_headers):
 
     if components:
-        # Restore only the components that provided via an argument
-        # but must also exist in extracted archive
-        # NOTICE: ext[:-1] cuts the 's' off in order to match the file extension name to be restored...
-        for ext in components:
-            for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext[:-1]), recursive=True):
-                print('restoring {0}: {1}'.format(ext, file_path))
-                restore_functions[ext[:-1]](grafana_url, file_path, http_headers)
-
+        exts = [c[:-1] for c in components]
     else:
-        # Restore every component included in extracted archive
-        for ext in restore_functions.keys():
-            for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext), recursive=True):
-                print('restoring {0}: {1}'.format(ext, file_path))
-                restore_functions[ext](grafana_url, file_path, http_headers)
+        exts = restore_functions.keys()
+    if "folder" in exts:  # make "folder" be the first to restore, so dashboards can be positioned under a right folder
+        exts.insert(0, exts.pop(exts.index("folder")))
+
+    for ext in exts:
+        for file_path in glob('{0}/**/*.{1}'.format(tmpdir, ext), recursive=True):
+            print('restoring {0}: {1}'.format(ext, file_path))
+            restore_functions[ext](grafana_url, file_path, http_headers)

@@ -223,7 +223,7 @@ def restore_grafana(cmd, grafana_name, archive_file, components=None, resource_g
             http_headers=headers)
 
 
-def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_mappings=None, dry_run=None):
+def sync_dashboard(cmd, source, destination, skip_folders=None, dry_run=None):
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     if not is_valid_resource_id(source):
         raise ArgumentUsageError(f"'{source}' isn't a valid resource id, please refer to example commands in help")
@@ -232,12 +232,6 @@ def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_
 
     parsed_source = parse_resource_id(source)
     parsed_destination = parse_resource_id(destination)
-
-    ds_uid_mappings = {}
-    for mapping in (data_source_uid_mappings or []):
-        if "=" in mapping:
-            src_uid, dest_uid = mapping.split("=")
-            ds_uid_mappings[src_uid] = dest_uid
 
     source_workspace, source_resource_group, source_subscription = (parsed_source["name"],
                                                                     parsed_source["resource_group"],
@@ -250,8 +244,19 @@ def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_
     destination_folders = list_folders(cmd, destination_workspace, resource_group_name=destination_resource_group,
                                        subscription=destination_subscription)
     destination_folders = {f["title"].lower(): f["id"] for f in destination_folders}
+
     destination_data_sources = list_data_sources(cmd, destination_workspace, destination_resource_group,
                                                  subscription=destination_subscription)
+    source_data_sources = list_data_sources(cmd, source_workspace, source_resource_group,
+                                                 subscription=source_subscription)
+    uid_mapping = {}
+    for s in source_data_sources:
+        s_type = s.get("type")
+        s_name = s.get("name")
+        matched_ds = next((x for x in destination_data_sources if s_type == x.get("type") and s_name == x.get("name")), None)
+        if not matched_ds:
+            continue
+        uid_mapping[s.get("uid")] = matched_ds.get("uid")
 
     source_dashboards = list_dashboards(cmd, source_workspace, resource_group_name=source_resource_group,
                                         subscription=source_subscription)
@@ -278,15 +283,18 @@ def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_
         # Figure out whether we shall correct the data sources. It is possible the Uids are different
         #   1. Panels
         if source_dashboard.get("dashboard"):
-            _fix_data_source_uid(source_dashboard["dashboard"].get("panels", []),
-                                 data_source_missed, data_source_unmatched,
-                                 destination_data_sources, ds_uid_mappings)
+            #_fix_data_source_uid(source_dashboard["dashboard"].get("panels", []),
+            #                     data_source_missed, data_source_unmatched,
+            #                     destination_data_sources, uid_mapping)
+            for panel in source_dashboard["dashboard"].get("panels", []):
+                uid_fixer(panel, uid_mapping)
         #   2. Annotations can be based on data sources
         if source_dashboard.get("dashboard") and source_dashboard["dashboard"].get("annotations"):
-            _fix_data_source_uid(source_dashboard["dashboard"]["annotations"].get("list", []),
-                                 data_source_missed, data_source_unmatched,
-                                 destination_data_sources, ds_uid_mappings)
-
+            #_fix_data_source_uid(source_dashboard["dashboard"]["annotations"].get("list", []),
+            #                     data_source_missed, data_source_unmatched,
+            #                     destination_data_sources, uid_mapping)
+            for annotation in source_dashboard["dashboard"]["annotations"].get("list", []):
+                uid_fixer(annotation, uid_mapping)
         if not dry_run:
             delete_dashboard(cmd, destination_workspace, uid, resource_group_name=destination_resource_group,
                              ignore_error=True, subscription=destination_subscription)
@@ -319,8 +327,21 @@ def sync_dashboard(cmd, source, destination, skip_folders=None, data_source_uid_
     return summary
 
 
+def uid_fixer(indict, uid_mapping):
+    if isinstance(indict, dict):
+        for key, value in indict.items():
+            if isinstance(value, dict):
+                if key == "datasource" and isinstance(value, dict) and value["uid"] in uid_mapping:
+                    value["uid"] = uid_mapping[value["uid"]]
+                else:
+                    uid_fixer(value, uid_mapping)
+            elif isinstance(value, list) or isinstance(value, tuple):
+                for v in value:
+                    uid_fixer(v, uid_mapping)
+
+
 def _fix_data_source_uid(artifacts, data_source_missed, data_source_unmatched,
-                         destination_data_sources, ds_uid_mappings):
+                         destination_data_sources, uid_mapping):
     for p in artifacts:
         ds = p.get("datasource")
         if not ds:
@@ -340,16 +361,9 @@ def _fix_data_source_uid(artifacts, data_source_missed, data_source_unmatched,
             if ds_uid in ["-- Grafana --", "grafana"]:  # reserved Uids
                 continue
 
-            if ds_uid in ds_uid_mappings:  # if mapping is available, let us use it
-                ds["uid"] = ds_uid_mappings[ds_uid]
-                continue
-
-            dses = [d for d in destination_data_sources if d["type"] == ds_type and d["name"] == ds.get("name")]
-            if len(dses) == 0:  # the data source doesn't exist
-                data_source_missed.add(ds_type)
-            elif len(dses) == 1:  # we can fix the uid
-                ds["uid"] = dses[0]["uid"]
-            else:  # if there are 1+ data source available, we can't do it for uses. Expect to use mapping provided
+            if ds_uid in uid_mapping:
+                ds["uid"] = uid_mapping[ds_uid]
+            else:
                 data_source_unmatched.add(ds_type)
 
 
