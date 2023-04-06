@@ -70,26 +70,40 @@ def _restore_components(grafana_url, restore_functions, tmpdir, components, http
     if "dashboard" in exts:  # dashboard restoration can't work if linked library panels don't exist
         exts.insert(0, "library_panel")
 
+    destination_folders = {}  # need to handle the case that folders are existing, but with different ids
     if "folder" in exts:  # make "folder" be the first to restore, so dashboards can be positioned under a right folder
         exts.insert(0, exts.pop(exts.index("folder")))
+        (status, content) = send_grafana_get(f'{grafana_url}/api/folders', http_headers)
+        if status == 200:
+            destination_folders = {f["title"].lower(): f["id"] for f in content}
+        else:
+            logger.warning('Failed to get folder list at destination workspace. Dashboard restoration might fail')
 
     for ext in exts:
         for file_path in glob(f'{tmpdir}/**/*.{ext}', recursive=True):
             logger.info('Restoring %s: %s', ext, file_path)
-            restore_functions[ext](grafana_url, file_path, http_headers)
+            restore_functions[ext](grafana_url, file_path, http_headers, destination_folders=destination_folders)
 
 
 # Restore dashboards
-def _create_dashboard(grafana_url, file_path, http_headers):
+def _create_dashboard(grafana_url, file_path, http_headers, **kwargs):
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     content = json.loads(data)
     content['dashboard']['id'] = None
 
+    folder_title = content.get('meta', {}).get('folderTitle', '').lower()
+
+    destination_folders = kwargs.get('destination_folders', {})
+    # try mapping to existing folders at destination workspace
+    folder_id = destination_folders.get(folder_title)
+    if not folder_id:
+        get_folder_id(content, grafana_url, http_post_headers=http_headers)
+
     payload = {
         'dashboard': content['dashboard'],
-        'folderId': get_folder_id(content, grafana_url, http_post_headers=http_headers),
+        'folderId': folder_id,
         'overwrite': True
     }
 
@@ -103,13 +117,20 @@ def _create_dashboard(grafana_url, file_path, http_headers):
 
 
 # Restore Library Panel
-def _create_library_panel(grafana_url, file_path, http_headers):
+def _create_library_panel(grafana_url, file_path, http_headers, **kwargs):
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     payload = json.loads(data)
     payload['id'] = None
-    payload['folderId'] = get_folder_id(payload, grafana_url, http_post_headers=http_headers)
+
+    # try mapping to existing folders at destination workspace
+    folder_title = payload.get('meta', {}).get('folderName', '').lower()
+    destination_folders = kwargs.get('destination_folders', {})
+    folder_id = destination_folders.get(folder_title)
+    if not folder_id:
+        get_folder_id(payload, grafana_url, http_post_headers=http_headers)
+    payload['folderId'] = folder_id
 
     datasources_missed = set()
     remap_datasource_uids(payload, uid_mapping, datasources_missed)
@@ -135,7 +156,7 @@ def _create_library_panel(grafana_url, file_path, http_headers):
 
 
 # Restore snapshots
-def _create_snapshot(grafana_url, file_path, http_headers):
+def _create_snapshot(grafana_url, file_path, http_headers, **kwargs):  # pylint: disable=unused-argument
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
@@ -151,20 +172,24 @@ def _create_snapshot(grafana_url, file_path, http_headers):
 
 
 # Restore folders
-def _create_folder(grafana_url, file_path, http_headers):
+def _create_folder(grafana_url, file_path, http_headers, **kwargs):
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
     folder = json.loads(data)
-    result = send_grafana_post(f'{grafana_url}/api/folders', json.dumps(folder), http_headers)
-    # 412 means the folder has existed
-    logger.warning("Create folder \"%s\". %s", folder.get('title', ''),
-                   "SUCCESS" if result[0] in [200, 412] else "FAILURE")
-    logger.info("status: %s, msg: %s", result[0], result[1])
+    folder_title = folder.get('title', '')
+    destination_folders = kwargs.get('destination_folders', {})
+    if folder_title.lower() in destination_folders:
+        logger.warning("Folder \"%s\" already exists", folder_title)
+    else:
+        result = send_grafana_post(f'{grafana_url}/api/folders', json.dumps(folder), http_headers)
+        logger.warning("Create folder \"%s\". %s", folder.get('title', ''),
+                       "SUCCESS" if result[0] == 200 else "FAILURE")
+        logger.info("status: %s, msg: %s", result[0], result[1])
 
 
 # Restore annotations
-def _create_annotation(grafana_url, file_path, http_headers):
+def _create_annotation(grafana_url, file_path, http_headers, **kwargs):  # pylint: disable=unused-argument
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
@@ -175,7 +200,7 @@ def _create_annotation(grafana_url, file_path, http_headers):
 
 
 # Restore data sources
-def _create_datasource(grafana_url, file_path, http_headers):
+def _create_datasource(grafana_url, file_path, http_headers, **kwargs):  # pylint: disable=unused-argument
     with open(file_path, 'r', encoding="utf8") as f:
         data = f.read()
 
